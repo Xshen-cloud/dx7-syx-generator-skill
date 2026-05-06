@@ -13,7 +13,7 @@
 Built from a real debugging session: several hand-written DX7 voices imported into Dexed but produced silence.  
 The reliable solution was to seed generation from an existing audible bank, modify gradually, and always recalculate checksum.
 
-[English](#english) · [中文](#中文说明) · [Usage](#usage) · [Workflow](#safe-workflow) · [Repository Structure](#repository-structure)
+[English](#english) · [Install](#installation) · [中文](#中文说明) · [安装](#安装说明) · [Usage](#usage) · [Workflow](#safe-workflow) · [Repository Structure](#repository-structure)
 
 </div>
 
@@ -169,6 +169,39 @@ No third-party Python packages are required.
 
 ---
 
+## Installation
+
+### Install as an OpenClaw skill
+
+Clone this repository into your OpenClaw workspace skills directory:
+
+```bash
+mkdir -p ~/.openclaw/workspace/skills
+git clone https://github.com/Xshen-cloud/dx7-syx-generator-skill.git \
+  ~/.openclaw/workspace/skills/dx7-syx-generator
+```
+
+If the directory already exists, update it with:
+
+```bash
+cd ~/.openclaw/workspace/skills/dx7-syx-generator
+git pull
+```
+
+After installation, start a new OpenClaw session or reload skills so the metadata in `SKILL.md` can be discovered.
+
+### Use without installing
+
+You can also use the helper script directly after cloning anywhere:
+
+```bash
+git clone https://github.com/Xshen-cloud/dx7-syx-generator-skill.git
+cd dx7-syx-generator-skill
+python3 scripts/dx7_syx_tool.py inspect /path/to/Dexed_01.syx
+```
+
+---
+
 ## Repository structure
 
 ```text
@@ -297,6 +330,39 @@ copy-test 确认能响之后，再逐步修改：
 ### 5. 每次都测试
 
 checksum 正确只说明 SysEx 容器合法，**不保证音色能发声**。
+
+---
+
+## 安装说明
+
+### 安装为 OpenClaw skill
+
+把仓库克隆到 OpenClaw workspace 的 skills 目录：
+
+```bash
+mkdir -p ~/.openclaw/workspace/skills
+git clone https://github.com/Xshen-cloud/dx7-syx-generator-skill.git \
+  ~/.openclaw/workspace/skills/dx7-syx-generator
+```
+
+如果已经安装过，用下面命令更新：
+
+```bash
+cd ~/.openclaw/workspace/skills/dx7-syx-generator
+git pull
+```
+
+安装后，开启新的 OpenClaw 会话，或重新加载 skills，让系统发现 `SKILL.md` 里的技能元数据。
+
+### 不安装，直接使用脚本
+
+也可以把仓库克隆到任意目录后直接运行脚本：
+
+```bash
+git clone https://github.com/Xshen-cloud/dx7-syx-generator-skill.git
+cd dx7-syx-generator-skill
+python3 scripts/dx7_syx_tool.py inspect /path/to/Dexed_01.syx
+```
 
 ---
 
