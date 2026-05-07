@@ -66,7 +66,7 @@ So this skill encodes the proven workflow:
 
 ## ⚠️ Seed Bank Guidelines
 
-**Recommended seed**: `SynprezFM_demo.syx` — 32 voices, all confirmed audible.
+**Recommended seed**: `seeds/SynprezFM_demo.syx` — 32 voices, all confirmed audible, included in this repository.
 
 **Do NOT use as seed** (valid checksum but garbage operator params):
 - `dx7_audible_test_bank.syx` — OP byte 0/1/2/4 out of range
@@ -245,6 +245,8 @@ python3 scripts/dx7_syx_tool.py inspect /path/to/SynprezFM_demo.syx
 dx7-syx-generator-skill/
 ├── README.md
 ├── SKILL.md
+├── seeds/
+│   └── SynprezFM_demo.syx
 └── scripts/
     └── dx7_syx_tool.py
 ```
@@ -298,7 +300,7 @@ checksum 正确但参数非法     → Dexed 能导入 → 没声音（种子库
 
 ## ⚠️ 种子库指南
 
-**推荐种子**: `SynprezFM_demo.syx` — 32 个音色，全部确认能发声。
+**推荐种子**: `seeds/SynprezFM_demo.syx` — 32 个音色，全部确认能发声，仓库已内置。
 
 **不能用做种子**（校验和正确但参数非法）：
 - `dx7_audible_test_bank.syx` — OP byte 0/1/2/4 超出合法范围
