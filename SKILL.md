@@ -60,10 +60,26 @@ F0 43 00 09 20 00 [4096 bytes voice data] [checksum] F7
 
 **判断种子是否可用的关键**：检查 operator byte 0（osc mode）和 byte 1（coarse）是否在合法范围内。如果 byte 0 = 0x63 (99) 或 byte 1 = 99，大概率是无效参数。
 
+## 致命陷阱：为什么手写 operator 字节会失败
+
+在实际调试中发现两个致命问题：
+
+### 陷阱 1：坏种子库
+`dx7_audible_test_bank.syx` 校验和正确，但内部参数是垃圾数据。用它生成的文件必然无声。
+
+### 陷阱 2：手写 operator 字节（byte 0-101）
+DX7 SysEx 用的是压缩编码，不是直观的 0-99 数值。手写值极大概率超出合法范围：
+
+- 手写 plunk 音色时，**15 个字节超出了 32 个正常音色的取值范围**
+- **5 个字节设为 0**，但在任何正常音色中这些字节永远不会为 0
+- 结果：文件能导入 Dexed，但无声
+
+**结论：永远不要从头手写 operator 参数（byte 0-101）。**
+
 ## 生成规则
 
 1. 从 `SynprezFM_demo.syx` 选一个风格接近的 voice 作为基础
-2. **只改** Pitch EG / LFO / 名字 等少量参数
+2. **只改** Pitch EG (102-109)、LFO (112-116)、名字 (118-127)
 3. **永远不要**重新写 operator block（byte 0-16, 17-33, ... 101）
 4. 改完复制到 32 个 slot，重算 checksum
 
@@ -73,12 +89,12 @@ F0 43 00 09 20 00 [4096 bytes voice data] [checksum] F7
 |-----------|------|------|----------|
 | #6 | CLARINET | 单 carrier + 木管质感 | 管乐、单音旋律 |
 | #14 | Flute 22 | 干净正弦波基调 | 警笛、纯音效果 |
-| #17 | LOG DRUM | 打击乐起音 | 打击乐、敲击音效 |
+| #17 | LOG DRUM | 打击乐起音 | 打击乐、敲击音效、plunk |
 | #18 | PIANO 2 | 钢琴类 | 键盘乐器 |
 | #19 | BABY CAT | 猫叫声效果 | 动物音效、滑音效果 |
 | #23 | LEAD SNYTH | 合成主音 | lead synth、电子音色 |
 | #30 | FANTOMES | 全 carrier，氛围 | 氛围、pad、drone |
-| #31 | Old Pond | 水滴/自然音效 | 自然音效、percussive |
+| #31 | Old Pond | 水滴/自然音效 | 自然音效、percussive、铜铃 |
 | #4 | yanni | 全 operator 输出 | 复杂合成音色 |
 
 ## Recommended scripts
@@ -143,7 +159,8 @@ out = bytearray(32 * 128)
 for i in range(32):
     out[i*128:(i+1)*128] = seed[src:src+128]
 
-# Modify voice 1 (offset 0) — only pitch EG, LFO, name
+# Modify voice 1 (offset 0) — ONLY pitch EG, LFO, name
+# NEVER modify bytes 0-101 (operator data)
 b = 0
 out[b+102:106] = bytes([80, 50, 30, 35])  # pitch EG rates
 out[b+106] = 99   # L1 max pitch up
@@ -169,4 +186,5 @@ If a generated file imports but has no sound:
 3. If copy-test is audible, the problem is the modified voice parameters.
 4. If copy-test is silent, check Dexed import location, cartridge loading, MIDI input, output volume, and selected voice.
 5. **Compare operator bytes 0-4 against a known-good bank** — if osc mode or coarse freq are out of range, the seed was bad.
-6. Never assume a valid checksum means the patch is audible.
+6. **If you hand-wrote any operator byte (0-101)**, that's almost certainly the problem. Restart from a working seed.
+7. Never assume a valid checksum means the patch is audible.

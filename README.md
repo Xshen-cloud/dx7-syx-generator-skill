@@ -149,6 +149,8 @@ Only after copy-test works, change a small number of fields:
 
 **Never rewrite the full operator block (bytes 0-101) unless you have a proven reference.**
 
+**Real-world debugging lesson**: hand-writing operator bytes for a plunk patch produced 15 bytes outside valid ranges and 5 bytes set to 0 (never 0 in any working voice), resulting in silence. Fix: copy LOG DRUM from SynprezFM_demo, modify only pitchEG/LFO/name, and it worked immediately.
+
 ### 5. Test every generated file
 
 A valid checksum means the SysEx container is valid. It does **not** mean the patch is musically audible.
@@ -368,6 +370,8 @@ copy-test 确认能响之后，再逐步修改：
 - 少量 operator level 或 ratio
 
 **永远不要**在没有可靠参考的情况下重写整个 operator block（byte 0-101）。
+
+**实战教训**：在一次实际调试中，从零手写 plunk 音色的 operator 字节，15 个字节超出了正常取值范围，5 个字节设为 0（但在正常音色中这些字节永不为 0），导致完全无声。修复方法是从 SynprezFM_demo 复制 LOG DRUM 音色，只改 pitchEG/LFO/名字，立即成功。
 
 ### 5. 每次都测试
 
