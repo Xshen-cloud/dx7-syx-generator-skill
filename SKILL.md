@@ -11,14 +11,18 @@ Use this skill when generating or editing `.syx` files for Yamaha DX7 or Dexed.
 
 Do **not** hand-build a DX7 voice from memory unless absolutely necessary. It is easy to create a file that imports but produces silence.
 
-Preferred workflow:
+**校验和正确 ≠ 音色能发声。** 这是最核心的经验。
 
-1. Start from a known-good Dexed/DX7 `.syx` bank that already makes sound.
-2. Copy one audible voice as the seed.
-3. Modify only a few packed parameters at a time.
-4. Rebuild a 32-voice bank.
-5. Recalculate checksum.
-6. Save and test in Dexed.
+## ⚠️ 种子库黑名单
+
+以下文件**不能**用作种子——它们校验和正确但内部 operator 参数是垃圾数据，生成后必然无声：
+
+- `dx7_audible_test_bank.syx` — OP6 byte 0/1/2/4 超出合法范围，OP1-5 输出全为 0
+- `dx7_dexed01_copytest.syx` — 同上，参数非法
+
+**唯一推荐种子**: `SynprezFM_demo.syx` (32 voices，全部确认能发声)
+
+路径: `/mnt/d/Workspace/Claw_work/SynprezFM_demo.syx`
 
 ## Known-good bank structure
 
@@ -36,15 +40,46 @@ F0 43 00 09 20 00 [4096 bytes voice data] [checksum] F7
 - pitch EG bytes are `102:110`
 - LFO / transpose bytes are `112:118`
 
-## Local proven facts
+## Operator 参数范围速查
 
-During testing, files generated entirely from hand-written packed voice parameters imported into Dexed but were silent. A copy made from an existing working bank (`Dexed_01.syx`) produced sound.
+每个 operator 占 17 bytes，offset = `op * 17`（op = 0..5）：
 
-Therefore, for reliable generation:
+| Offset | 参数 | 合法范围 | 说明 |
+|--------|------|---------|------|
+| +0 | oscillator mode | 0-63 | 频率模式 |
+| +1 | coarse frequency | 1-31 | 粗调频率（比例模式） |
+| +2 | fine_frequency | 0-15 | 细调频率 |
+| +3 | detune | 0-99 | 失谐量 |
+| +4 | harm. type | 0-31 | 谐波类型（固定模式） |
+| +5-8 | EG Rates R1-R4 | 0-99 | 包络速率 |
+| +9-12 | EG Levels L1-L4 | 0-99 | 包络电平 |
+| +13 | velocity_sensitivity | 0-99 | 力度响应 |
+| +14 | output_level | 0-99 | 输出电平 |
+| +15 | mode_select | 1=比例, 2=固定 | 频率模式 |
+| +16 | key_scaling | 0-99 | 键盘跟随 |
 
-- Use `Dexed_01.syx` or another confirmed-audible bank as a seed.
-- First create a copy-test bank from the source voice.
-- Only after the copy-test makes sound, change pitch EG, LFO, name, and limited operator values.
+**判断种子是否可用的关键**：检查 operator byte 0（osc mode）和 byte 1（coarse）是否在合法范围内。如果 byte 0 = 0x63 (99) 或 byte 1 = 99，大概率是无效参数。
+
+## 生成规则
+
+1. 从 `SynprezFM_demo.syx` 选一个风格接近的 voice 作为基础
+2. **只改** Pitch EG / LFO / 名字 等少量参数
+3. **永远不要**重新写 operator block（byte 0-16, 17-33, ... 101）
+4. 改完复制到 32 个 slot，重算 checksum
+
+## 推荐种子 voice 速查
+
+| Demo Voice | 名称 | 特点 | 适合改造成 |
+|-----------|------|------|----------|
+| #6 | CLARINET | 单 carrier + 木管质感 | 管乐、单音旋律 |
+| #14 | Flute 22 | 干净正弦波基调 | 警笛、纯音效果 |
+| #17 | LOG DRUM | 打击乐起音 | 打击乐、敲击音效 |
+| #18 | PIANO 2 | 钢琴类 | 键盘乐器 |
+| #19 | BABY CAT | 猫叫声效果 | 动物音效、滑音效果 |
+| #23 | LEAD SNYTH | 合成主音 | lead synth、电子音色 |
+| #30 | FANTOMES | 全 carrier，氛围 | 氛围、pad、drone |
+| #31 | Old Pond | 水滴/自然音效 | 自然音效、percussive |
+| #4 | yanni | 全 operator 输出 | 复杂合成音色 |
 
 ## Recommended scripts
 
@@ -58,30 +93,72 @@ python3 scripts/dx7_syx_tool.py meow /path/to/seed.syx /path/to/output.syx --voi
 
 ## Safe modification strategy
 
-For expressive patches such as a cat-like FM meow:
+For expressive patches such as a cat-like FM meow or a siren:
 
-1. Keep the seed's operator blocks intact first.
+1. **Keep the seed's operator blocks intact** — never rewrite bytes 0-101 for operators
 2. Change pitch envelope to create a scoop:
 
 ```python
-voice[102:106] = bytes([70, 42, 34, 45])
-voice[106:110] = bytes([38, 78, 45, 50])
+voice[102:106] = bytes([70, 42, 34, 45])  # rates
+voice[106:110] = bytes([38, 78, 45, 50])  # levels
 ```
 
 3. Add mild LFO pitch wobble:
 
 ```python
-voice[112:118] = bytes([45, 18, 18, 0, 49, 24])
+voice[112] = 45   # rate
+voice[113] = 18   # delay
+voice[114] = 18   # pitch mod depth
+voice[115] = 0    # amp mod
+voice[116] = 0    # wave (triangle)
+# voice[117] = transpose, leave as-is
 ```
 
-4. Keep algorithm audible unless deliberately changing routing:
+4. Keep algorithm and feedback from seed unless deliberately changing routing
+5. Write the modified voice into all 32 bank slots, recalc checksum.
+
+## Python 代码模板
 
 ```python
-voice[110] = 31              # algorithm 32
-voice[111] = (1 << 3) | 5    # sync on, feedback 5
-```
+from pathlib import Path
 
-5. Write the modified voice into all 32 bank slots, recalc checksum.
+HEADER = bytes([0xF0, 0x43, 0x00, 0x09, 0x20, 0x00])
+
+def read_bank(path):
+    b = path.read_bytes()
+    return bytearray(b[6:-2])  # strip header + checksum + footer
+
+def write_bank(path, data):
+    checksum = (-sum(data)) & 0x7F
+    path.write_bytes(HEADER + data + bytes([checksum, 0xF7]))
+
+# Read seed
+seed = read_bank(Path("/path/to/SynprezFM_demo.syx"))
+
+# Pick a voice (e.g. voice 14 = index 13)
+src = 13 * 128
+
+# Copy to all 32 slots
+out = bytearray(32 * 128)
+for i in range(32):
+    out[i*128:(i+1)*128] = seed[src:src+128]
+
+# Modify voice 1 (offset 0) — only pitch EG, LFO, name
+b = 0
+out[b+102:106] = bytes([80, 50, 30, 35])  # pitch EG rates
+out[b+106] = 99   # L1 max pitch up
+out[b+107] = 99   # L2 sustain high
+out[b+108] = 10   # L3 drop low
+out[b+109] = 50   # L4 center
+out[b+112] = 55   # LFO rate
+out[b+113] = 10   # LFO delay
+out[b+114] = 60   # LFO pitch mod
+out[b+115] = 0    # no amp mod
+out[b+116] = 0    # triangle wave
+out[b+118:b+128] = b"SIREN     "
+
+write_bank(Path("output.syx"), bytes(out))
+```
 
 ## Debugging silent files
 
@@ -91,6 +168,5 @@ If a generated file imports but has no sound:
 2. Generate a copy-test from a known-good voice.
 3. If copy-test is audible, the problem is the modified voice parameters.
 4. If copy-test is silent, check Dexed import location, cartridge loading, MIDI input, output volume, and selected voice.
-5. Compare operator output levels and algorithm against a known-good bank.
-
-Never assume a valid checksum means the patch is audible.
+5. **Compare operator bytes 0-4 against a known-good bank** — if osc mode or coarse freq are out of range, the seed was bad.
+6. Never assume a valid checksum means the patch is audible.
